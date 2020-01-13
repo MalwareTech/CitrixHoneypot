@@ -7,8 +7,8 @@ Detect and log CVE-2019-19781 scan and exploitation attempts.
 
 ###Usage:
 1. Clone repo: 
-`git clone git:github.com/MalwareTech/CitrixHoneypot.git CitrixHoneypot && cd CitrixHoneypot`
-2. Make ssl and logs directory: mkdir logs ssl
+`git clone https://github.com/MalwareTech/CitrixHoneypot.git CitrixHoneypot && cd CitrixHoneypot`
+2. Make ssl and logs directory: `mkdir logs ssl`
 3. Generate self signed SSL certificate:
 `openssl req -newkey rsa:2048 -nodes -keyout ssl/key.pem -x509 -days 365 -out ssl/cert.pem`
 4. run: `python3 CitrixHoneypot.py`
