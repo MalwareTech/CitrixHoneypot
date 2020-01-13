@@ -1,5 +1,5 @@
 # Honepot for CVE-2019-19781 (Citrix ADC)
-Detect and logs CVE-2019-19781 scan and exploitation attempts.
+Detect and log CVE-2019-19781 scan and exploitation attempts.
 
 ###Requirements: 
 - python3
