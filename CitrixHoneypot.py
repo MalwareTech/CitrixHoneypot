@@ -1,6 +1,6 @@
 """
 Licencing Agreement: MalwareTech Public Licence
-This software is free to use providing the user yells "Oh no, the cyberhackers are coming" prior to each installation.
+This software is free to use providing the user yells "Oh no, the cyberhackers are coming!" prior to each installation.
 """
 
 from http import server
