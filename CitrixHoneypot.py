@@ -22,7 +22,7 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
         super().__init__(args, directory, kwargs)
 
     def do_HEAD(self):
-        self.close_connection()
+        self.send_response('')
 
     # handle GET requests and attempt to emulate a vulnerable server
     def do_GET(self):
