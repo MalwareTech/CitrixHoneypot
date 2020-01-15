@@ -22,17 +22,19 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
         super().__init__(args, directory, kwargs)
 
     def do_HEAD(self):
-        self.close_connection()
+        self.send_response('')
 
     # handle GET requests and attempt to emulate a vulnerable server
     def do_GET(self):
-        self.log(logging.INFO, "GET Header: {}".format(self.path))
+        path = urllib.parse.unquote(self.path)
 
-        if self.struggle_check(self.path):
+        self.log(logging.INFO, "GET Header: {}".format(path))
+
+        if self.struggle_check(path):
             return
 
         # split the path by '/', ignoring empty string
-        url_path = list(filter(None, self.path.split('/')))
+        url_path = list(filter(None, path.split('/')))
 
         # if url is empty or path is /vpn/, display fake login page
         if len(url_path) == 0 or (len(url_path) == 1 and url_path[0] == 'vpn'):
@@ -41,7 +43,7 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
         # check if the directory traversal bug has been tried
         if len(url_path) >= 3 and url_path[0] == 'vpn' and url_path[1] == '..':
             # collapse path to ignore extra / and .. for proper formatting
-            collapsed_path = server._url_collapse_path(self.path)
+            collapsed_path = server._url_collapse_path(path)
 
             # 403 on /vpn/../vpns/ is used by some scanners to detect vulnerable hosts
             # Ex: https://github.com/cisagov/check-cve-2019-19781/blob/develop/src/check_cve/check.py
@@ -62,7 +64,7 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
 
             # we got a request that sort of matches CVE-2019-19781, but it's not a know scan attempt
             else:
-                self.log(logging.DEBUG, "Error: unhandled CVE-2019-19781 scan attempt: {}".format(self.path))
+                self.log(logging.DEBUG, "Error: unhandled CVE-2019-19781 scan attempt: {}".format(path))
                 self.send_response("")
 
         # if all else fails return nothing
@@ -70,10 +72,12 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
 
     # handle POST requests to try and capture exploit payloads
     def do_POST(self):
-        self.log(logging.INFO, "POST Header: {}".format(self.path))
+        path = urllib.parse.unquote(self.path)
+
+        self.log(logging.INFO, "POST Header: {}".format(path))
 
         if 'Content-Length' in self.headers:
-            collapsed_path = server._url_collapse_path(self.path)
+            collapsed_path = server._url_collapse_path(path)
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
             self.log(logging.INFO, "POST body: {}".format(post_data))
@@ -83,7 +87,7 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
                 payload = urllib.parse.parse_qs(post_data)['title'][0]
                 self.log(logging.CRITICAL, "Detected CVE-2019-19781 payload: {}".format(payload))
 
-        if self.struggle_check(self.path):
+        if self.struggle_check(path):
             return
 
         # send empty response as we're now done
