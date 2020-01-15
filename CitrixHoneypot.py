@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
 logging.log(logging.INFO, 'Citrix CVE-2019-19781 Honeypot by MalwareTech')
 
-httpd = server.HTTPServer(('0.0.0.0', 8443), CitrixHandler)
+httpd = server.HTTPServer(('0.0.0.0', 443), CitrixHandler)
 httpd.socket = ssl.wrap_socket(httpd.socket,
                                certfile='ssl/cert.pem',
                                keyfile='ssl/key.pem',
