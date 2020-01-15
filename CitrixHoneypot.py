@@ -33,6 +33,7 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
         if self.struggle_check(path):
             return
 
+
         # split the path by '/', ignoring empty string
         url_path = list(filter(None, path.split('/')))
 
@@ -40,32 +41,38 @@ class CitrixHandler(server.SimpleHTTPRequestHandler):
         if len(url_path) == 0 or (len(url_path) == 1 and url_path[0] == 'vpn'):
             return self.send_response(self.get_page('login.html'))
 
-        # check if the directory traversal bug has been tried
-        if len(url_path) >= 3 and url_path[0] == 'vpn' and url_path[1] == '..':
-            # collapse path to ignore extra / and .. for proper formatting
+        # only proceed if a directory traversal was attempted
+        if path.find('/../') != -1:
+            # flatten path to ease parsing
             collapsed_path = server._url_collapse_path(path)
+            url_path = list(filter(None, collapsed_path.split('/')))
 
-            # 403 on /vpn/../vpns/ is used by some scanners to detect vulnerable hosts
-            # Ex: https://github.com/cisagov/check-cve-2019-19781/blob/develop/src/check_cve/check.py
-            if len(url_path) == 3 and url_path[2] == 'vpns':
-                self.log(logging.WARN, "Detected type 1 CVE-2019-19781 scan attempt!")
-                page_403 = self.get_page('403.html').replace('{url}', collapsed_path)
-                return self.send_response(page_403)
+            # check if the directory traversal bug has been tried
+            if len(url_path) >= 1 and url_path[0] == 'vpns':
+                # collapse path to ignore extra / and .. for proper formatting
+                collapsed_path = server._url_collapse_path(path)
 
-            if len(url_path) >= 4 and url_path[2] == 'vpns' and url_path[3] == 'portal':
-                self.log(logging.CRITICAL, "Detected CVE-2019-19781 completion!")
-                return self.send_response("")
+                # 403 on /vpn/../vpns/ is used by some scanners to detect vulnerable hosts
+                # Ex: https://github.com/cisagov/check-cve-2019-19781/blob/develop/src/check_cve/check.py
+                if len(url_path) == 1 and url_path[0] == 'vpns':
+                    self.log(logging.WARN, "Detected type 1 CVE-2019-19781 scan attempt!")
+                    page_403 = self.get_page('403.html').replace('{url}', collapsed_path)
+                    return self.send_response(page_403)
 
-            # some scanners try to fetch smb.conf to detect vulnerable hosts
-            # Ex: https://github.com/trustedsec/cve-2019-19781/blob/master/cve-2019-19781_scanner.py
-            elif collapsed_path == '/vpns/cfg/smb.conf':
-                self.log(logging.WARN, "Detected type 2 CVE-2019-19781 scan attempt!")
-                return self.send_response(self.get_page('smb.conf'))
+                if len(url_path) >= 2 and url_path[0] == 'vpns' and url_path[1] == 'portal':
+                    self.log(logging.CRITICAL, "Detected CVE-2019-19781 completion!")
+                    return self.send_response("")
 
-            # we got a request that sort of matches CVE-2019-19781, but it's not a know scan attempt
-            else:
-                self.log(logging.DEBUG, "Error: unhandled CVE-2019-19781 scan attempt: {}".format(path))
-                self.send_response("")
+                # some scanners try to fetch smb.conf to detect vulnerable hosts
+                # Ex: https://github.com/trustedsec/cve-2019-19781/blob/master/cve-2019-19781_scanner.py
+                elif collapsed_path == '/vpns/cfg/smb.conf':
+                    self.log(logging.WARN, "Detected type 2 CVE-2019-19781 scan attempt!")
+                    return self.send_response(self.get_page('smb.conf'))
+
+                # we got a request that sort of matches CVE-2019-19781, but it's not a know scan attempt
+                else:
+                    self.log(logging.DEBUG, "Error: unhandled CVE-2019-19781 scan attempt: {}".format(path))
+                    self.send_response("")
 
         # if all else fails return nothing
         return self.send_response("")
@@ -141,7 +148,7 @@ if __name__ == '__main__':
 
 logging.log(logging.INFO, 'Citrix CVE-2019-19781 Honeypot by MalwareTech')
 
-httpd = server.HTTPServer(('0.0.0.0', 443), CitrixHandler)
+httpd = server.HTTPServer(('0.0.0.0', 8443), CitrixHandler)
 httpd.socket = ssl.wrap_socket(httpd.socket,
                                certfile='ssl/cert.pem',
                                keyfile='ssl/key.pem',
